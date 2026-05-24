@@ -19,6 +19,8 @@ const template = document.querySelector("#blockTemplate");
 const clearButton = document.querySelector("#clearStage");
 const lastMerge = document.querySelector("#lastMerge");
 const trashZone = document.querySelector("#trashZone");
+const playHint = document.querySelector("#playHint");
+const coarsePointer = window.matchMedia("(pointer: coarse)");
 
 let nextId = 1;
 let activeDrag = null;
@@ -92,7 +94,10 @@ function createBlock(value, mode = "stage") {
   block.setAttribute("aria-label", `${value} 숫자 친구`);
 
   if (mode === "palette") {
-    block.addEventListener("pointerdown", startFromPalette);
+    block.addEventListener("click", addFromPalette);
+    if (!coarsePointer.matches) {
+      block.addEventListener("pointerdown", startFromPalette);
+    }
   } else {
     block.addEventListener("pointerdown", startDrag);
   }
@@ -123,13 +128,40 @@ function positionBlock(block, x, y) {
   block.style.top = `${next.y}px`;
 }
 
+function updatePlayHint() {
+  const hasBlocks = stage.querySelectorAll(".number-block").length > 0;
+
+  playHint.classList.toggle("is-hidden", hasBlocks);
+}
+
+function addFromPalette(event) {
+  if (event.currentTarget.dataset.wasDragged === "true") {
+    event.currentTarget.dataset.wasDragged = "false";
+    return;
+  }
+
+  const value = Number(event.currentTarget.dataset.value);
+  const block = createBlock(value);
+
+  stage.append(block);
+  stage.classList.add("has-blocks");
+  updatePlayHint();
+  positionBlock(
+    block,
+    stage.clientWidth / 2 - block.offsetWidth / 2,
+    stage.clientHeight * 0.72 - block.offsetHeight / 2,
+  );
+}
+
 function startFromPalette(event) {
+  event.currentTarget.dataset.wasDragged = "true";
   const value = Number(event.currentTarget.dataset.value);
   const block = createBlock(value);
   const point = stagePoint(event);
 
   stage.append(block);
   stage.classList.add("has-blocks");
+  updatePlayHint();
   positionBlock(block, point.x - block.offsetWidth / 2, point.y - block.offsetHeight / 2);
   beginDrag(event, block, { deletable: false });
 }
@@ -241,6 +273,7 @@ function deleteBlock(block) {
 
   block.remove();
   stage.classList.toggle("has-blocks", stage.querySelectorAll(".number-block").length > 0);
+  updatePlayHint();
   lastMerge.textContent = `${value} 삭제`;
 }
 
@@ -345,6 +378,7 @@ function splitBlock(block, sliceState) {
 
   block.remove();
   stage.append(first, second);
+  updatePlayHint();
   positionBlock(first, left, top);
   positionBlock(second, left + first.offsetWidth + gap, top);
 
@@ -421,6 +455,7 @@ function mergeIfOverlapping(block) {
   block.remove();
   target.remove();
   stage.append(merged);
+  updatePlayHint();
   positionBlock(
     merged,
     centerX - stageRect.left - merged.offsetWidth / 2,
@@ -435,6 +470,7 @@ function mergeIfOverlapping(block) {
 function clearStage() {
   stage.querySelectorAll(".number-block").forEach((block) => block.remove());
   stage.classList.remove("has-blocks");
+  updatePlayHint();
   lastMerge.textContent = "준비 완료";
 }
 
