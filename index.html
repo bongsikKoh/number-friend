@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Number Friends Builder</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="stage-panel" aria-label="숫자 캐릭터 놀이판">
+        <header class="topbar">
+          <div>
+            <h1>Number Friends</h1>
+            <p>캐릭터를 끌어다 겹치면 더 큰 숫자 친구가 생겨요.</p>
+          </div>
+          <div class="score-card" aria-live="polite">
+            <span>마지막 합치기</span>
+            <strong id="lastMerge">준비 완료</strong>
+          </div>
+        </header>
+
+        <div id="stage" class="stage" aria-label="드래그 영역">
+          <div class="empty-hint">
+            <strong>아래 숫자를 끌어 올려보세요</strong>
+            <span>두 캐릭터를 서로 겹치면 자동으로 합쳐집니다.</span>
+          </div>
+        </div>
+        <div id="trashZone" class="trash-zone" aria-hidden="true">
+          <span aria-hidden="true">⌫</span>
+        </div>
+      </section>
+
+      <aside class="palette-panel" aria-label="숫자 캐릭터 팔레트">
+        <div class="palette-header">
+          <h2>숫자 친구</h2>
+          <button id="clearStage" class="icon-button" type="button" title="놀이판 비우기" aria-label="놀이판 비우기">
+            <span aria-hidden="true">↺</span>
+          </button>
+        </div>
+        <div id="palette" class="palette"></div>
+      </aside>
+    </main>
+
+    <template id="blockTemplate">
+      <button class="number-block" type="button">
+        <span class="block-grid"></span>
+        <span class="eyes" aria-hidden="true"><i></i><i></i></span>
+        <span class="mouth" aria-hidden="true"></span>
+        <span class="number-label"></span>
+      </button>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
