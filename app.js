@@ -31,6 +31,7 @@ function layoutFor(value) {
   if (value === 4) return { cols: 2, rows: 2 };
   if (value <= 6) return { cols: 2, rows: Math.ceil(value / 2) };
   if (value <= 9) return { cols: 3, rows: Math.ceil(value / 3) };
+  if (value <= 25) return { cols: 5, rows: Math.ceil(value / 5) };
   if (value <= 100) return { cols: 10, rows: Math.ceil(value / 10) };
   if (value <= 200) return { cols: 20, rows: Math.ceil(value / 20) };
   return { cols: 25, rows: Math.ceil(value / 25) };
@@ -430,9 +431,53 @@ function overlapRatio(a, b) {
   return overlapArea / smallerArea;
 }
 
+function rectCenter(rect) {
+  return {
+    x: rect.left + rect.width / 2,
+    y: rect.top + rect.height / 2,
+  };
+}
+
+function pointInsideRect(point, rect) {
+  return (
+    point.x >= rect.left &&
+    point.x <= rect.right &&
+    point.y >= rect.top &&
+    point.y <= rect.bottom
+  );
+}
+
+function expandRect(rect, amount) {
+  return {
+    left: rect.left - amount,
+    right: rect.right + amount,
+    top: rect.top - amount,
+    bottom: rect.bottom + amount,
+    width: rect.width + amount * 2,
+    height: rect.height + amount * 2,
+  };
+}
+
+function isMergeCandidate(a, b) {
+  const first = a.getBoundingClientRect();
+  const second = b.getBoundingClientRect();
+  const relaxedFirst = expandRect(first, 18);
+  const relaxedSecond = expandRect(second, 18);
+  const firstCenter = rectCenter(first);
+  const secondCenter = rectCenter(second);
+
+  return (
+    overlapRatio(a, b) > 0.18 ||
+    pointInsideRect(firstCenter, relaxedSecond) ||
+    pointInsideRect(secondCenter, relaxedFirst)
+  );
+}
+
 function mergeIfOverlapping(block) {
   const candidates = [...stage.querySelectorAll(".number-block")].filter((item) => item !== block);
-  const target = candidates.find((item) => overlapRatio(block, item) > 0.35);
+  const target = candidates
+    .filter((item) => isMergeCandidate(block, item))
+    .sort((a, b) => overlapRatio(block, b) - overlapRatio(block, a))[0];
 
   if (!target) return;
 
