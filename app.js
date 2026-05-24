@@ -95,6 +95,7 @@ function createBlock(value, mode = "stage") {
   block.setAttribute("aria-label", `${value} 숫자 친구`);
 
   if (mode === "palette") {
+    block.addEventListener("pointerdown", rememberPaletteTouchStart);
     block.addEventListener("click", addFromPalette);
     if (!coarsePointer.matches) {
       block.addEventListener("pointerdown", startFromPalette);
@@ -135,11 +136,22 @@ function updatePlayHint() {
   playHint.classList.toggle("is-hidden", hasBlocks);
 }
 
+function rememberPaletteTouchStart(event) {
+  event.currentTarget.dataset.startX = String(event.clientX);
+  event.currentTarget.dataset.startY = String(event.clientY);
+}
+
 function addFromPalette(event) {
   if (event.currentTarget.dataset.wasDragged === "true") {
     event.currentTarget.dataset.wasDragged = "false";
     return;
   }
+
+  const startX = Number(event.currentTarget.dataset.startX || event.clientX);
+  const startY = Number(event.currentTarget.dataset.startY || event.clientY);
+  const moved = Math.hypot(event.clientX - startX, event.clientY - startY);
+
+  if (moved > 12) return;
 
   const value = Number(event.currentTarget.dataset.value);
   const block = createBlock(value);
