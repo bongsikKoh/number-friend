@@ -180,6 +180,11 @@ function startFromPalette(event) {
 }
 
 function startDrag(event) {
+  if (activeSlice) {
+    event.preventDefault();
+    return;
+  }
+
   beginDrag(event, event.currentTarget, { deletable: true });
 }
 
@@ -291,37 +296,62 @@ function deleteBlock(block) {
 }
 
 function startSlice(event) {
-  if (event.target !== stage) return;
+  if (!activeSlice && event.target !== stage) return;
 
   const point = stagePoint(event);
-  activeSlice = {
+  if (!activeSlice) {
+    activeSlice = {
+      pointers: new Map(),
+      endedPointers: new Set(),
+      maxPointerCount: 0,
+      startedAt: performance.now(),
+    };
+
+    stage.addEventListener("pointermove", onSliceMove);
+    stage.addEventListener("pointerup", onSliceEnd);
+    stage.addEventListener("pointercancel", onSliceEnd);
+  }
+
+  activeSlice.pointers.set(event.pointerId, {
     startX: point.x,
     startY: point.y,
     lastX: point.x,
     lastY: point.y,
-    startedAt: performance.now(),
-  };
+  });
+  activeSlice.maxPointerCount = Math.max(activeSlice.maxPointerCount, activeSlice.pointers.size);
 
   stage.setPointerCapture(event.pointerId);
-  stage.addEventListener("pointermove", onSliceMove);
-  stage.addEventListener("pointerup", onSliceEnd);
-  stage.addEventListener("pointercancel", onSliceEnd);
 }
 
 function onSliceMove(event) {
   if (!activeSlice) return;
 
+  const pointer = activeSlice.pointers.get(event.pointerId);
+  if (!pointer) return;
+
   const point = stagePoint(event);
-  activeSlice.lastX = point.x;
-  activeSlice.lastY = point.y;
+  pointer.lastX = point.x;
+  pointer.lastY = point.y;
 }
 
 function onSliceEnd(event) {
   if (!activeSlice) return;
+  if (!activeSlice.pointers.has(event.pointerId)) return;
 
-  const sliceState = activeSlice;
+  activeSlice.endedPointers.add(event.pointerId);
+  if (stage.hasPointerCapture(event.pointerId)) {
+    stage.releasePointerCapture(event.pointerId);
+  }
+
+  if (activeSlice.endedPointers.size < activeSlice.pointers.size) return;
+
+  const sliceState = {
+    paths: [...activeSlice.pointers.values()],
+    partCount: Math.min(activeSlice.maxPointerCount + 1, MAX_VALUE),
+    startedAt: activeSlice.startedAt,
+  };
+
   activeSlice = null;
-  stage.releasePointerCapture(event.pointerId);
   stage.removeEventListener("pointermove", onSliceMove);
   stage.removeEventListener("pointerup", onSliceEnd);
   stage.removeEventListener("pointercancel", onSliceEnd);
@@ -329,20 +359,19 @@ function onSliceEnd(event) {
 }
 
 function isSliceGesture(sliceState) {
-  const distance = Math.hypot(
-    sliceState.lastX - sliceState.startX,
-    sliceState.lastY - sliceState.startY,
+  const longestDistance = Math.max(
+    ...sliceState.paths.map((path) => Math.hypot(path.lastX - path.startX, path.lastY - path.startY)),
   );
   const duration = performance.now() - sliceState.startedAt;
 
-  return distance > 85 && duration < 650;
+  return longestDistance > 85 && duration < 900;
 }
 
-function lineIntersectsRect(sliceState, rect) {
-  const minX = Math.min(sliceState.startX, sliceState.lastX);
-  const maxX = Math.max(sliceState.startX, sliceState.lastX);
-  const minY = Math.min(sliceState.startY, sliceState.lastY);
-  const maxY = Math.max(sliceState.startY, sliceState.lastY);
+function lineIntersectsRect(path, rect) {
+  const minX = Math.min(path.startX, path.lastX);
+  const maxX = Math.max(path.startX, path.lastX);
+  const minY = Math.min(path.startY, path.lastY);
+  const maxY = Math.max(path.startY, path.lastY);
 
   if (maxX < rect.left || minX > rect.right || maxY < rect.top || minY > rect.bottom) {
     return false;
@@ -350,8 +379,8 @@ function lineIntersectsRect(sliceState, rect) {
 
   for (let index = 0; index <= 18; index += 1) {
     const t = index / 18;
-    const x = sliceState.startX + (sliceState.lastX - sliceState.startX) * t;
-    const y = sliceState.startY + (sliceState.lastY - sliceState.startY) * t;
+    const x = path.startX + (path.lastX - path.startX) * t;
+    const y = path.startY + (path.lastY - path.startY) * t;
 
     if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
       return true;
@@ -361,20 +390,12 @@ function lineIntersectsRect(sliceState, rect) {
   return false;
 }
 
-function splitValueFor(block, sliceState) {
-  const left = Number.parseFloat(block.style.left || "0");
-  const top = Number.parseFloat(block.style.top || "0");
-  const value = Number(block.dataset.value);
-  const horizontalMovement = Math.abs(sliceState.lastX - sliceState.startX);
-  const verticalMovement = Math.abs(sliceState.lastY - sliceState.startY);
-  const isHorizontalCut = horizontalMovement >= verticalMovement;
-  const midpoint = isHorizontalCut
-    ? (sliceState.startX + sliceState.lastX) / 2 - left
-    : (sliceState.startY + sliceState.lastY) / 2 - top;
-  const size = isHorizontalCut ? block.offsetWidth : block.offsetHeight;
-  const ratio = Math.min(Math.max(midpoint / Math.max(1, size), 0.2), 0.8);
+function splitValues(value, requestedPartCount) {
+  const partCount = Math.min(value, requestedPartCount);
+  const baseValue = Math.floor(value / partCount);
+  const remainder = value % partCount;
 
-  return Math.min(value - 1, Math.max(1, Math.round(value * ratio)));
+  return Array.from({ length: partCount }, (_, index) => baseValue + (index < remainder ? 1 : 0));
 }
 
 function splitBlock(block, sliceState) {
@@ -383,28 +404,33 @@ function splitBlock(block, sliceState) {
 
   const left = Number.parseFloat(block.style.left || "0");
   const top = Number.parseFloat(block.style.top || "0");
-  const firstValue = splitValueFor(block, sliceState);
-  const secondValue = value - firstValue;
-  const first = createBlock(firstValue);
-  const second = createBlock(secondValue);
+  const values = splitValues(value, sliceState.partCount);
+  const blocks = values.map((partValue) => createBlock(partValue));
   const gap = 12;
 
   block.remove();
-  stage.append(first, second);
+  stage.append(...blocks);
   updatePlayHint();
-  positionBlock(first, left, top);
-  positionBlock(second, left + first.offsetWidth + gap, top);
 
-  if (second.getBoundingClientRect().right > stage.getBoundingClientRect().right) {
-    positionBlock(second, left, top + first.offsetHeight + gap);
-  }
+  let nextX = left;
+  let nextY = top;
+  let rowHeight = 0;
+  blocks.forEach((partBlock) => {
+    if (nextX > left && nextX + partBlock.offsetWidth > stage.clientWidth) {
+      nextX = left;
+      nextY += rowHeight + gap;
+      rowHeight = 0;
+    }
 
-  first.classList.add("merge-pop");
-  second.classList.add("merge-pop");
-  lastMerge.textContent = `${value} = ${firstValue} + ${secondValue}`;
+    positionBlock(partBlock, nextX, nextY);
+    nextX += partBlock.offsetWidth + gap;
+    rowHeight = Math.max(rowHeight, partBlock.offsetHeight);
+  });
+
+  blocks.forEach((partBlock) => partBlock.classList.add("merge-pop"));
+  lastMerge.textContent = `${value} = ${values.join(" + ")}`;
   setTimeout(() => {
-    first.classList.remove("merge-pop");
-    second.classList.remove("merge-pop");
+    blocks.forEach((partBlock) => partBlock.classList.remove("merge-pop"));
   }, 280);
   return true;
 }
@@ -416,12 +442,14 @@ function trySliceStageBlock(sliceState) {
     const left = Number.parseFloat(block.style.left || "0");
     const top = Number.parseFloat(block.style.top || "0");
 
-    return lineIntersectsRect(sliceState, {
+    const rect = {
       left,
       top,
       right: left + block.offsetWidth,
       bottom: top + block.offsetHeight,
-    });
+    };
+
+    return sliceState.paths.some((path) => lineIntersectsRect(path, rect));
   });
 
   if (!target) return false;

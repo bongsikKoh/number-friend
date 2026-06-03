@@ -12,6 +12,7 @@ The app is built as a static site with plain HTML, CSS, and JavaScript.
 - Supports combined values up to 500.
 - Shows hundreds, tens, and ones using different colors based on the existing number color rules.
 - Split an existing character by slicing across it from an empty area of the playground.
+- Split count depends on finger count: one finger makes 2 parts, two fingers make 3 parts, and three fingers make 4 parts.
 - Delete an existing character by dragging it to the trash zone or back toward the palette.
 - Mobile and tablet friendly layout.
 
@@ -48,6 +49,7 @@ ipconfig
 - Drag an existing character to move it.
 - Drop one character onto another to merge them.
 - Start from an empty playground area and swipe quickly across a character to split it.
+- Use one finger for 2 parts, two fingers for 3 parts, and three fingers for 4 parts.
 - Drag an existing character to the trash button to delete it.
 
 ## Deployment
@@ -75,4 +77,3 @@ styles.css
 app.js
 README.md
 ```
-
