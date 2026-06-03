@@ -9,7 +9,7 @@ The app is built as a static site with plain HTML, CSS, and JavaScript.
 
 - Add number friends from 1 to 10.
 - Merge two characters by dragging one onto another.
-- Supports combined values up to 500.
+- Supports combined values up to 1000.
 - Shows hundreds, tens, and ones using different colors based on the existing number color rules.
 - Split an existing character by slicing across it from an empty area of the playground.
 - Split count depends on finger count: one finger makes 2 parts, two fingers make 3 parts, and three fingers make 4 parts.

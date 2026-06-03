@@ -1,4 +1,4 @@
-const MAX_VALUE = 500;
+const MAX_VALUE = 1000;
 const paletteValues = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 const colors = [
   ["#f45b69", "#b93f4d"],
@@ -34,6 +34,7 @@ function layoutFor(value) {
   if (value <= 25) return { cols: 5, rows: Math.ceil(value / 5) };
   if (value <= 100) return { cols: 10, rows: Math.ceil(value / 10) };
   if (value <= 200) return { cols: 20, rows: Math.ceil(value / 20) };
+  if (value <= 500) return { cols: 25, rows: Math.ceil(value / 25) };
   return { cols: 25, rows: Math.ceil(value / 25) };
 }
 
