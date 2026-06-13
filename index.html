@@ -14,6 +14,11 @@
             <h1>Number Friends</h1>
             <p id="playHint">겹치면 더하고, 손가락 수대로 슥 자르면 나뉘어요.</p>
           </div>
+          <div class="mode-tabs" aria-label="놀이 모드">
+            <button class="mode-tab is-active" type="button" data-mode="free">자유놀이</button>
+            <button class="mode-tab" type="button" data-mode="target">목표 만들기</button>
+            <button class="mode-tab" type="button" data-mode="split">나누기 퀴즈</button>
+          </div>
           <div class="score-card" aria-live="polite">
             <span>마지막 합치기</span>
             <strong id="lastMerge">준비 완료</strong>
@@ -25,6 +30,11 @@
             <strong>아래 숫자를 끌어 올려보세요</strong>
             <span>두 캐릭터를 서로 겹치면 자동으로 합쳐집니다.</span>
           </div>
+        </div>
+        <div id="missionCard" class="mission-card" aria-live="polite">
+          <span id="missionLabel">자유놀이</span>
+          <strong id="missionText">숫자 친구를 만들고 합쳐보세요.</strong>
+          <button id="nextMission" type="button">다음</button>
         </div>
         <div id="trashZone" class="trash-zone" aria-hidden="true">
           <span aria-hidden="true">🗑</span>

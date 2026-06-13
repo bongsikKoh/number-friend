@@ -20,11 +20,23 @@ const clearButton = document.querySelector("#clearStage");
 const lastMerge = document.querySelector("#lastMerge");
 const trashZone = document.querySelector("#trashZone");
 const playHint = document.querySelector("#playHint");
+const modeTabs = document.querySelectorAll(".mode-tab");
+const missionCard = document.querySelector("#missionCard");
+const missionLabel = document.querySelector("#missionLabel");
+const missionText = document.querySelector("#missionText");
+const nextMission = document.querySelector("#nextMission");
 const coarsePointer = window.matchMedia("(pointer: coarse)");
 
 let nextId = 1;
 let activeDrag = null;
 let activeSlice = null;
+let gameState = {
+  mode: "free",
+  targetValue: null,
+  splitValue: null,
+  splitParts: null,
+  completed: false,
+};
 
 function layoutFor(value) {
   if (value <= 3) return { cols: 1, rows: value };
@@ -137,6 +149,112 @@ function updatePlayHint() {
   playHint.classList.toggle("is-hidden", hasBlocks);
 }
 
+function randomItem(items) {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+function stageBlocks() {
+  return [...stage.querySelectorAll(".number-block")];
+}
+
+function clearStageBlocks() {
+  stageBlocks().forEach((block) => block.remove());
+  stage.classList.remove("has-blocks");
+  updatePlayHint();
+}
+
+function setMode(mode) {
+  gameState = {
+    mode,
+    targetValue: null,
+    splitValue: null,
+    splitParts: null,
+    completed: false,
+  };
+
+  modeTabs.forEach((tab) => {
+    tab.classList.toggle("is-active", tab.dataset.mode === mode);
+  });
+  missionCard.classList.toggle("is-free", mode === "free");
+
+  if (mode === "free") {
+    missionLabel.textContent = "자유놀이";
+    missionText.textContent = "숫자 친구를 만들고 합쳐보세요.";
+    nextMission.hidden = true;
+    return;
+  }
+
+  nextMission.hidden = false;
+  startMission();
+}
+
+function startMission() {
+  gameState.completed = false;
+
+  if (gameState.mode === "target") {
+    gameState.targetValue = randomItem([7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 24, 25, 30]);
+    missionLabel.textContent = "목표 만들기";
+    missionText.textContent = `${gameState.targetValue} 숫자 친구를 만들어보세요.`;
+    lastMerge.textContent = `목표: ${gameState.targetValue}`;
+    return;
+  }
+
+  if (gameState.mode === "split") {
+    gameState.splitParts = randomItem([2, 3, 4]);
+    gameState.splitValue = randomItem([8, 9, 10, 12, 15, 16, 18, 20, 24, 30, 36]);
+    clearStageBlocks();
+    addBlockToStage(gameState.splitValue, 0.5, 0.5);
+    missionLabel.textContent = "나누기 퀴즈";
+    missionText.textContent = `${gameState.splitValue}을 ${gameState.splitParts}조각으로 나눠보세요.`;
+    lastMerge.textContent = `${gameState.splitParts - 1}손가락으로 슥`;
+  }
+}
+
+function completeMission(message) {
+  if (gameState.mode === "free" || gameState.completed) return;
+
+  gameState.completed = true;
+  missionText.textContent = `${message} 다음 문제로 가볼까요?`;
+  lastMerge.textContent = "성공";
+}
+
+function checkTargetMission() {
+  if (gameState.mode !== "target" || gameState.completed) return;
+
+  const solved = stageBlocks().some((block) => Number(block.dataset.value) === gameState.targetValue);
+  if (solved) {
+    completeMission(`${gameState.targetValue} 완성!`);
+  }
+}
+
+function checkSplitMission(values) {
+  if (gameState.mode !== "split" || gameState.completed) return;
+  if (values.length !== gameState.splitParts) return;
+
+  const expected = splitValues(gameState.splitValue, gameState.splitParts).sort((a, b) => a - b);
+  const actual = [...values].sort((a, b) => a - b);
+  const solved = expected.every((value, index) => value === actual[index]);
+
+  if (solved) {
+    completeMission(`${gameState.splitValue} 나누기 성공!`);
+  }
+}
+
+function addBlockToStage(value, xRatio = 0.5, yRatio = 0.72) {
+  const block = createBlock(value);
+
+  stage.append(block);
+  stage.classList.add("has-blocks");
+  updatePlayHint();
+  positionBlock(
+    block,
+    stage.clientWidth * xRatio - block.offsetWidth / 2,
+    stage.clientHeight * yRatio - block.offsetHeight / 2,
+  );
+  checkTargetMission();
+  return block;
+}
+
 function rememberPaletteTouchStart(event) {
   event.currentTarget.dataset.startX = String(event.clientX);
   event.currentTarget.dataset.startY = String(event.clientY);
@@ -155,16 +273,7 @@ function addFromPalette(event) {
   if (moved > 12) return;
 
   const value = Number(event.currentTarget.dataset.value);
-  const block = createBlock(value);
-
-  stage.append(block);
-  stage.classList.add("has-blocks");
-  updatePlayHint();
-  positionBlock(
-    block,
-    stage.clientWidth / 2 - block.offsetWidth / 2,
-    stage.clientHeight * 0.72 - block.offsetHeight / 2,
-  );
+  addBlockToStage(value);
 }
 
 function startFromPalette(event) {
@@ -177,6 +286,7 @@ function startFromPalette(event) {
   stage.classList.add("has-blocks");
   updatePlayHint();
   positionBlock(block, point.x - block.offsetWidth / 2, point.y - block.offsetHeight / 2);
+  checkTargetMission();
   beginDrag(event, block, { deletable: false });
 }
 
@@ -430,6 +540,7 @@ function splitBlock(block, sliceState) {
 
   blocks.forEach((partBlock) => partBlock.classList.add("merge-pop"));
   lastMerge.textContent = `${value} = ${values.join(" + ")}`;
+  checkSplitMission(values);
   setTimeout(() => {
     blocks.forEach((partBlock) => partBlock.classList.remove("merge-pop"));
   }, 280);
@@ -549,14 +660,13 @@ function mergeIfOverlapping(block) {
   );
   merged.classList.add("merge-pop");
   lastMerge.textContent = `${a} + ${b} = ${sum}`;
+  checkTargetMission();
 
   setTimeout(() => merged.classList.remove("merge-pop"), 280);
 }
 
 function clearStage() {
-  stage.querySelectorAll(".number-block").forEach((block) => block.remove());
-  stage.classList.remove("has-blocks");
-  updatePlayHint();
+  clearStageBlocks();
   lastMerge.textContent = "준비 완료";
 }
 
@@ -566,4 +676,9 @@ function seedPalette() {
 
 clearButton.addEventListener("click", clearStage);
 stage.addEventListener("pointerdown", startSlice);
+modeTabs.forEach((tab) => {
+  tab.addEventListener("click", () => setMode(tab.dataset.mode));
+});
+nextMission.addEventListener("click", startMission);
 seedPalette();
+setMode("free");

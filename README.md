@@ -14,6 +14,7 @@ The app is built as a static site with plain HTML, CSS, and JavaScript.
 - Split an existing character by slicing across it from an empty area of the playground.
 - Split count depends on finger count: one finger makes 2 parts, two fingers make 3 parts, and three fingers make 4 parts.
 - Delete an existing character by dragging it to the trash zone or back toward the palette.
+- Play in free mode, target-number mode, or split-quiz mode.
 - Mobile and tablet friendly layout.
 
 ## Local Preview
@@ -44,6 +45,7 @@ ipconfig
 
 ## Controls
 
+- Use the mode tabs to switch between free play, target-number challenges, and split quizzes.
 - Desktop: drag a number friend from the palette into the playground.
 - Phone/tablet: tap a number friend in the palette to add it.
 - Drag an existing character to move it.
