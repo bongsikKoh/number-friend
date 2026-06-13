@@ -22,22 +22,22 @@ The app is built as a static site with plain HTML, CSS, and JavaScript.
 From `C:\codex`, run:
 
 ```powershell
-python -m http.server 8000 --bind 0.0.0.0
+python -m http.server 5500 --bind 0.0.0.0
 ```
 
 Then open:
 
 ```text
-http://127.0.0.1:8000/number/
+http://127.0.0.1:5500/number/
 ```
 
 On a phone or tablet connected to the same Wi-Fi:
 
 ```text
-http://192.168.50.163:8000/number/
+http://<YOUR_LOCAL_IP>:5500/number/
 ```
 
-The local IP can change depending on the network. Check it with:
+Replace `<YOUR_LOCAL_IP>` with your computer's IPv4 address. The local IP can change depending on the network. Check it with:
 
 ```powershell
 ipconfig
